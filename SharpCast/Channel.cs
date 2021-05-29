@@ -10,6 +10,7 @@
     using System.Net.Sockets;
     using System.Security.Cryptography.X509Certificates;
     using System.Threading;
+    using System.Threading.Tasks;
     using extensions.api.cast_channel;
     using Google.ProtocolBuffers;
     using Newtonsoft.Json;
@@ -38,7 +39,7 @@
         private Socket _socket;
         private SslStream _sslStream;
         private int _requestId;
-        private Thread _readThread;
+        private Task _readThread;
         private bool _connected;
 
         public Channel(string host, int port)
@@ -98,54 +99,61 @@
             _pingTimer.Start();
             _connected = true;
 
-            _readThread = new Thread(() =>
+            _readThread = Task.Run(() =>
             {
                 while (_connected)
                 {
-                    CastMessage message = ReadMessage();
-                    if (message != null && message.PayloadType == CastMessage.Types.PayloadType.STRING)
+                    try
                     {
-                        Debug.WriteLine("RESPONSE : " + message.PayloadUtf8);
-                        var responseObject = JObject.Parse(message.PayloadUtf8);
-                        var tt = responseObject.Value<string>("type");
-                        Type type = Response.GetResponseType(tt);
-                        if (type != null)
+                        CastMessage message = ReadMessage();
+                        if (message != null && message.PayloadType == CastMessage.Types.PayloadType.STRING)
                         {
-                            if (type == typeof(PingResponse))
+                            Debug.WriteLine("RESPONSE : " + message.PayloadUtf8);
+                            var responseObject = JObject.Parse(message.PayloadUtf8);
+                            var tt = responseObject.Value<string>("type");
+                            Type type = Response.GetResponseType(tt);
+                            if (type != null)
                             {
-                                SendMessage(NS_CAST_HEARTBEAT, new PongMessage(), DEFAULT_RECEIVER_ID);
-                            }
-                            else
-                            {
-                                var rsp = JsonConvert.DeserializeObject(message.PayloadUtf8, type, new JsonSerializerSettings
+                                if (type == typeof(PingResponse))
                                 {
-                                    Converters = new List<JsonConverter> { new MediaMetadataJsonConverter() }
-                                }) as Response;
-                                if (rsp != null)
+                                    SendMessage(NS_CAST_HEARTBEAT, new PongMessage(), DEFAULT_RECEIVER_ID);
+                                }
+                                else
                                 {
-                                    if (_responses.ContainsKey(rsp.RequestId))
+                                    var rsp = JsonConvert.DeserializeObject(message.PayloadUtf8, type, new JsonSerializerSettings
                                     {
-                                        ResponseHolder responseHolder;
-                                        if (_responses.TryGetValue(rsp.RequestId, out responseHolder))
+                                        Converters = new List<JsonConverter> { new MediaMetadataJsonConverter() }
+                                    }) as Response;
+                                    if (rsp != null)
+                                    {
+                                        if (_responses.ContainsKey(rsp.RequestId))
                                         {
-                                            responseHolder.Response = rsp;
-                                            responseHolder.Signal.Set();
+                                            ResponseHolder responseHolder;
+                                            if (_responses.TryGetValue(rsp.RequestId, out responseHolder))
+                                            {
+                                                responseHolder.Response = rsp;
+                                                responseHolder.Signal.Set();
+                                            }
                                         }
-                                    }
-                                    else
-                                    {
-                                        if (Status != null)
+                                        else
                                         {
-                                            Status(this, rsp);
+                                            if (Status != null)
+                                            {
+                                                Status(this, rsp);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                        else
+                        {
+                            Debug.WriteLine("Received unhandled payload type : " + message?.PayloadType ?? "empty");
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        Debug.WriteLine("Received unhandled payload type : " + message?.PayloadType ?? "empty");
+                        Debug.WriteLine("Received unhandled payload type : " + ex.Message);
                     }
                 }
             });
