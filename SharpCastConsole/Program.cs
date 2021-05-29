@@ -6,7 +6,8 @@
 
         static void Main(string[] args) {
 
-            const string host = "192.168.1.58"; // ChromeCast host
+
+            const string host = "10.0.0.8"; // ChromeCast host
             const string contentUrl = "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4";
             const string contentType = "video/mp4";
             const string title = "Big buck dunny";
