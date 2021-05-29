@@ -157,8 +157,6 @@
                     }
                 }
             });
-
-            _readThread.Start();
         }
 
 
