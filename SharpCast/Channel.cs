@@ -103,7 +103,7 @@
                 while (_connected)
                 {
                     CastMessage message = ReadMessage();
-                    if (message.PayloadType == CastMessage.Types.PayloadType.STRING)
+                    if (message != null && message.PayloadType == CastMessage.Types.PayloadType.STRING)
                     {
                         Debug.WriteLine("RESPONSE : " + message.PayloadUtf8);
                         var responseObject = JObject.Parse(message.PayloadUtf8);
@@ -145,7 +145,7 @@
                     }
                     else
                     {
-                        Debug.WriteLine("Received unhandled payload type : " + message.PayloadType);
+                        Debug.WriteLine("Received unhandled payload type : " + message?.PayloadType ?? "empty");
                     }
                 }
             });
@@ -259,6 +259,11 @@
 
                 recv += read;
             } while (recv < size);
+
+            if (buffer.Length == 0)
+            {
+                return null;
+            }
 
             return CastMessage.ParseFrom(buffer);
         }
