@@ -107,12 +107,6 @@
         {
             EnsureChannelIsConnected();
             Application runningApplication = EnsureApplicationIsRunning();
-            if (runningApplication.ApplicationId != Channel.DEFAULT_APP_ID)
-            {
-                LaunchApp(Channel.DEFAULT_APP_ID);
-                runningApplication = EnsureApplicationIsRunning();
-            }
-
             StartSession(runningApplication.TransportId);
 
             Response response = _channel.SendRequest(Channel.NS_CAST_MEDIA, new LoadRequest(runningApplication.SessionId, new Media
