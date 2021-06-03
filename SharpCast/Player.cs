@@ -197,7 +197,12 @@
         private Application EnsureApplicationIsRunning() {
             Application application = GetRunningApp();
             if (application == null) {
-                throw new InvalidOperationException("No running application");
+                LaunchApp(Channel.DEFAULT_APP_ID);
+                application = GetRunningApp();
+                if (application == null)
+                {
+                    throw new InvalidOperationException("No running application");
+                }
             }
 
             return application;
